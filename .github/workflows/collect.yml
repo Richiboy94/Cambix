@@ -24,3 +24,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           CAMBIX_SUBSCRIPTION_KEY: ${{ secrets.CAMBIX_SUBSCRIPTION_KEY }}
+
