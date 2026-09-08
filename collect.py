@@ -37,14 +37,25 @@ def fetch_cambix():
     )
     resp.raise_for_status()
     data = resp.json()
-    # NOTA: nunca vimos una respuesta real de este endpoint, solo el curl de la
-    # petición. "buy"/"sell" son un placeholder — ajustar según el JSON real
-    # que devuelva en la primera ejecución (revisar el log de este job).
+
+    # Aún no confirmamos el schema real de este endpoint. Probamos varios
+    # nombres de campo comunes; si ninguno calza, imprimimos la respuesta
+    # cruda en el log para ajustar esto de una vez en la siguiente iteración.
+    buy_keys = ["buy", "buyRate", "buying_rate", "compra", "purchasePrice", "buyPrice", "tipoCambioCompra"]
+    sell_keys = ["sell", "sellRate", "selling_rate", "venta", "salePrice", "sellPrice", "tipoCambioVenta"]
+
+    buy = next((data[k] for k in buy_keys if k in data), None)
+    sell = next((data[k] for k in sell_keys if k in data), None)
+
+    if buy is None or sell is None:
+        print(f"⚠️  Cambix: no se reconocieron los campos buy/sell. Respuesta cruda: {json.dumps(data)}")
+        raise KeyError("campos buy/sell no encontrados — ver respuesta cruda impresa arriba")
+
     return {
         "provider": "CAMBIX",
         "provider_type": "casa_digital",
-        "buy": float(data["buy"]),
-        "sell": float(data["sell"]),
+        "buy": float(buy),
+        "sell": float(sell),
     }
 
 
