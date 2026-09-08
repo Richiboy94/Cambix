@@ -11,6 +11,7 @@ Variables de entorno requeridas:
 import os
 import re
 import json
+import time
 import hashlib
 from datetime import datetime, timezone
 
@@ -21,6 +22,19 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 CAMBIX_SUBSCRIPTION_KEY = os.environ.get("CAMBIX_SUBSCRIPTION_KEY", "d8fe90e920e944838711021952a3d2d5")
 
 HEADERS_UA = {"User-Agent": "Mozilla/5.0 (compatible; PulsoCambiarioBot/1.0)"}
+
+
+def fetch_with_retry(fn, retries=2, delay=5):
+    """Reintenta una función de captura ante errores transitorios (ej. 503 puntual)."""
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_exc = e
+            if attempt < retries:
+                time.sleep(delay)
+    raise last_exc
 
 
 def fetch_cambix():
@@ -176,7 +190,7 @@ def main():
 
     for name, fn in fetchers:
         try:
-            result = fn()
+            result = fetch_with_retry(fn)
             rows.extend(result if isinstance(result, list) else [result])
         except Exception as e:
             print(f"❌ Falló la captura de {name}: {e}")
