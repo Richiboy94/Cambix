@@ -118,11 +118,48 @@ def fetch_tkambio():
     )
     resp.raise_for_status()
     data = resp.json()
-    return {
+
+    results = [{
         "provider": "TKAMBIO",
         "provider_type": "casa_digital",
         "buy": float(data["buying_rate"]),
         "sell": float(data["selling_rate"]),
+    }]
+
+    # IBK no tiene calculadora pública en su web (el flujo real vive dentro
+    # de su app móvil, vía deep link interbank://, sin endpoint web que
+    # replicar). Se usa el valor que TKambio ya reporta como IBK — es un
+    # dato de segunda mano, no la fuente directa del banco.
+    if "ibk_buying_rate" in data and "ibk_selling_rate" in data:
+        results.append({
+            "provider": "IBK",
+            "provider_type": "banco",
+            "buy": float(data["ibk_buying_rate"]),
+            "sell": float(data["ibk_selling_rate"]),
+        })
+
+    return results
+
+
+def fetch_kambista():
+    resp = requests.get(
+        "https://api.kambista.com/v1/exchange/calculates",
+        params={
+            "originCurrency": "USD",
+            "destinationCurrency": "PEN",
+            "amount": 1000,
+            "active": "S",
+        },
+        headers=HEADERS_UA,
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return {
+        "provider": "KAMBISTA",
+        "provider_type": "casa_digital",
+        "buy": float(data["tc"]["bid"]),
+        "sell": float(data["tc"]["ask"]),
     }
 
 
@@ -196,8 +233,9 @@ def main():
     fetchers = [
         ("Cambix", fetch_cambix),
         ("Rextie (+ SUNAT)", fetch_rextie),
-        ("TKambio", fetch_tkambio),
+        ("TKambio (+ IBK)", fetch_tkambio),
         ("Tucambista", fetch_tucambista),
+        ("Kambista", fetch_kambista),
     ]
 
     for name, fn in fetchers:
