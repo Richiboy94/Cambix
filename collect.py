@@ -131,19 +131,31 @@ def fetch_tucambista():
     resp.raise_for_status()
     html = resp.text
 
-    match = re.search(r'self\.__next_f\.push\(\[1,"(3:.*?)"\]\)', html, re.S)
-    if not match:
-        raise RuntimeError("No se encontró el bloque de datos de competencia en Tucambista")
+    # No anclamos al número de chunk (ej. "3:") porque Next.js puede
+    # reasignarlo entre builds. Revisamos todos los chunks hasta encontrar
+    # el que contenga "competition".
+    chunks = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', html, re.S)
+    competition = None
+    for chunk in chunks:
+        if '"competition"' not in chunk:
+            continue
+        try:
+            unescaped = chunk.encode().decode('unicode_escape')
+        except Exception:
+            continue
+        m = re.search(r'"competition":(\[.*?\])\}\]\]?$', unescaped) or \
+            re.search(r'"competition":(\[.*?\])', unescaped)
+        if not m:
+            continue
+        try:
+            competition = json.loads(m.group(1))
+            break
+        except json.JSONDecodeError:
+            continue
 
-    unescaped = match.group(1).encode().decode("unicode_escape")
-    competition_match = re.search(r'"competition":(\[.*\])\}\]\]$', unescaped)
-    if not competition_match:
-        raise RuntimeError("No se pudo extraer 'competition' del bloque de Tucambista")
+    if competition is None:
+        raise RuntimeError("No se encontró el bloque 'competition' en ningún chunk de Tucambista")
 
-    competition = json.loads(competition_match.group(1))
-
-    # Filtrar: solo Tucambista (Kambista y Rextie ya se capturan de su propia fuente;
-    # el resto de la lista son apps argentinas mezcladas, ver documentación).
     for entry in competition:
         if entry.get("entity") == "tucambista":
             return {
