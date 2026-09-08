@@ -137,7 +137,7 @@ def fetch_tucambista():
     chunks = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)', html, re.S)
     competition = None
     for chunk in chunks:
-        if '"competition"' not in chunk:
+        if 'competition' not in chunk:  # sin comillas: el texto sigue escapado en este punto
             continue
         try:
             unescaped = chunk.encode().decode('unicode_escape')
