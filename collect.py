@@ -98,14 +98,26 @@ def fetch_rextie():
             "buy": float(r["bid"]),
             "sell": float(r["ask"]),
         })
+    # SUNAT y AVG_BANKS son campos "bono" de la misma respuesta de Rextie —
+    # se descartan si vienen en 0 para no ensuciar el histórico con un dato inválido.
     if "SUNAT" in by_source:
         r = by_source["SUNAT"]
-        results.append({
-            "provider": "SUNAT",
-            "provider_type": "benchmark",
-            "buy": float(r["bid"]),
-            "sell": float(r["ask"]),
-        })
+        if float(r["bid"]) > 0 and float(r["ask"]) > 0:
+            results.append({
+                "provider": "SUNAT",
+                "provider_type": "benchmark",
+                "buy": float(r["bid"]),
+                "sell": float(r["ask"]),
+            })
+    if "AVG_BANKS" in by_source:
+        r = by_source["AVG_BANKS"]
+        if float(r["bid"]) > 0 and float(r["ask"]) > 0:
+            results.append({
+                "provider": "AVG_BANKS",
+                "provider_type": "benchmark",
+                "buy": float(r["bid"]),
+                "sell": float(r["ask"]),
+            })
     return results
 
 
@@ -131,12 +143,15 @@ def fetch_tkambio():
     # replicar). Se usa el valor que TKambio ya reporta como IBK — es un
     # dato de segunda mano, no la fuente directa del banco.
     if "ibk_buying_rate" in data and "ibk_selling_rate" in data:
-        results.append({
-            "provider": "IBK",
-            "provider_type": "banco",
-            "buy": float(data["ibk_buying_rate"]),
-            "sell": float(data["ibk_selling_rate"]),
-        })
+        ibk_buy = float(data["ibk_buying_rate"])
+        ibk_sell = float(data["ibk_selling_rate"])
+        if ibk_buy > 0 and ibk_sell > 0:
+            results.append({
+                "provider": "IBK",
+                "provider_type": "banco",
+                "buy": ibk_buy,
+                "sell": ibk_sell,
+            })
 
     return results
 
@@ -232,7 +247,7 @@ def main():
     rows = []
     fetchers = [
         ("Cambix", fetch_cambix),
-        ("Rextie (+ SUNAT)", fetch_rextie),
+        ("Rextie (+ SUNAT + AVG_BANKS)", fetch_rextie),
         ("TKambio (+ IBK)", fetch_tkambio),
         ("Tucambista", fetch_tucambista),
         ("Kambista", fetch_kambista),
